@@ -1,9 +1,13 @@
+import dotenv from "dotenv";
+dotenv.config();
 import path from "path";
 import express from "express";
 import mongoose from "mongoose";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import Test from "./model/test.mjs";
 import multer from "multer";
-const upload = multer({ dest: "uploads/" });
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 const app = express();
 const __dirname = path.resolve();
@@ -21,7 +25,6 @@ mongoose
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-console.log(__dirname);
 app.use("/test", express.static(path.join(__dirname, "../react2024/dist")));
 
 app.get("/api/v1/", (req, res) => {
@@ -38,22 +41,41 @@ app.post("/api/v1/message", async (req, res) => {
       message: req.body.message,
     });
 
-    const savepostMessage = await postMessage.save();
+    await postMessage.save();
     const tests = await Test.find({});
 
     res.send({
       result: "ok",
       data: tests.map((test) => ({ id: test._id, message: test.message })),
     });
-    console.log(tests);
   } catch (e) {
     console.error(e);
     res.json({ result: "ng" });
   }
 });
 
-app.post("/file", upload.single("image"), (req, res) => {
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: process.env.ACCESS_KEY,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY,
+  },
+  region: process.env.BUCKET_REGION,
+});
+
+app.post("/file", upload.single("image"), async (req, res) => {
   console.log(req.body, req.file);
+  req.file.buffer;
+
+  const params = {
+    Bucket: process.env.BUCKET_NAME,
+    Key: req.file.originalname,
+    Body: req.file.buffer,
+    ContentType: req.file.mimetype,
+  };
+
+  const command = new PutObjectCommand(params);
+  await s3.send(command);
+
   res.json({ retult: "ok" });
 });
 
