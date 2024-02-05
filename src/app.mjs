@@ -75,7 +75,6 @@ app.post("/file", upload.single("image"), async (req, res) => {
 
   const command = new PutObjectCommand(params);
   await s3.send(command);
-
   res.json({ retult: "ok" });
 });
 
