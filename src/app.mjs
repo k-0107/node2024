@@ -5,6 +5,7 @@ import express from "express";
 import mongoose from "mongoose";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import Test from "./model/test.mjs";
+import Photo from "./model/photo.mjs";
 import multer from "multer";
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -63,21 +64,35 @@ const s3 = new S3Client({
 });
 
 app.post("/file", upload.single("image"), async (req, res) => {
-  console.log(req.file);
-  req.file.buffer;
+  const { originalname, buffer, mimetype, size } = req.file;
+
+  const newPhoto = new Photo({
+    filename: originalname,
+    size: size,
+  });
+  console.log(newPhoto);
+  await newPhoto.save();
 
   const params = {
     Bucket: process.env.BUCKET_NAME,
-    Key: req.file.originalname,
-    Body: req.file.buffer,
-    ContentType: req.file.mimetype,
+    Key: newPhoto._id.toString(),
+    Body: buffer,
+    ContentType: mimetype,
   };
 
   const command = new PutObjectCommand(params);
   await s3.send(command);
 
-  const imageUrl = `https://${process.env.BUCKET_NAME}.s3-${process.env.BUCKET_REGION}.amazonaws.com/${req.file.originalname}`;
-  res.json({ result: "ok", imageUrl });
+  res.json({ result: "ok" });
+});
+
+app.get("/photos", async (req, res) => {
+  const photos = await Photo.find({});
+  const photoUrls = photos.map((photo) => ({
+    _id: photo._id,
+    imageUrl: `https://${process.env.BUCKET_NAME}.s3-${process.env.BUCKET_REGION}.amazonaws.com/${photo._id}`,
+  }));
+  res.json({ photos: photoUrls });
 });
 
 app.listen(3000, (req, res) => {
