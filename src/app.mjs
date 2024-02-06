@@ -63,7 +63,7 @@ const s3 = new S3Client({
 });
 
 app.post("/file", upload.single("image"), async (req, res) => {
-  console.log(req.body, req.file);
+  console.log(req.file);
   req.file.buffer;
 
   const params = {
@@ -75,7 +75,9 @@ app.post("/file", upload.single("image"), async (req, res) => {
 
   const command = new PutObjectCommand(params);
   await s3.send(command);
-  res.json({ retult: "ok" });
+
+  const imageUrl = `https://${process.env.BUCKET_NAME}.s3-${process.env.BUCKET_REGION}.amazonaws.com/${req.file.originalname}`;
+  res.json({ result: "ok", imageUrl });
 });
 
 app.listen(3000, (req, res) => {
