@@ -3,7 +3,14 @@ dotenv.config();
 import path from "path";
 import express from "express";
 import mongoose from "mongoose";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+// import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 import Test from "./model/test.mjs";
 import Photo from "./model/photo.mjs";
 import multer from "multer";
@@ -83,7 +90,7 @@ app.post("/file", upload.single("image"), async (req, res) => {
   const command = new PutObjectCommand(params);
   await s3.send(command);
 
-  res.json({ result: "ok" });
+  res.send(newPhoto);
 });
 
 app.get("/photos", async (req, res) => {
@@ -93,6 +100,33 @@ app.get("/photos", async (req, res) => {
     imageUrl: `https://${process.env.BUCKET_NAME}.s3-${process.env.BUCKET_REGION}.amazonaws.com/${photo._id}`,
   }));
   res.json({ photos: photoUrls });
+});
+
+app.delete("/photo/:id", async (req, res) => {
+  try {
+    const photoId = req.params.id;
+
+    const photo = await Photo.findById(photoId);
+    if (!photo) {
+      return res.json({ error: "Photo not found" });
+    }
+
+    console.log(photo);
+
+    const deleteParams = {
+      Bucket: process.env.BUCKET_NAME,
+      Key: photo._id.toString(),
+    };
+    const deleteCommand = new DeleteObjectCommand(deleteParams);
+    await s3.send(deleteCommand);
+
+    await Photo.findByIdAndDelete(photoId);
+
+    res.json({ results: "Photo deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting photo:", error);
+    res.json({ results: "ng" });
+  }
 });
 
 app.listen(3000, (req, res) => {
