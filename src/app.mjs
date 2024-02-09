@@ -43,6 +43,15 @@ app.get("/api/v1/", (req, res) => {
   });
 });
 
+app.post("/api/v1/Testmessage", async (req, res) => {
+  try {
+    res.send(req.body);
+  } catch (e) {
+    console.error(e);
+    res.json({ result: "ng" });
+  }
+});
+
 app.post("/api/v1/message", async (req, res) => {
   try {
     const postMessage = new Test({
@@ -53,7 +62,7 @@ app.post("/api/v1/message", async (req, res) => {
     const tests = await Test.find({});
 
     res.send({
-      result: "ok",
+      result: "send successfully",
       data: tests.map((test) => ({ id: test._id, message: test.message })),
     });
   } catch (e) {
